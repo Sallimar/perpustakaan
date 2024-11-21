@@ -18,62 +18,179 @@ class _BookListPageState extends State<BookListPage> {
   }
 
   void fetchBooks() async {
-    final response = await Supabase.instance.client
-        .from('books')
-        .select();
+    final response = await Supabase.instance.client.from('books').select();
 
     setState(() {
       books = List<Map<String, dynamic>>.from(response);
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.brown[100],
         title: const Text('Daftar Buku'),
+        centerTitle: true,
         actions: [
           IconButton(
             onPressed: fetchBooks,
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: books.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: books.length,
-              itemBuilder: (context, index) {
-                final book = books[index];
-                return ListTile(
-                  title: Text(book['title'] ?? 'No Title', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(book['author'] ?? 'No Author', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 14),),
-                      Text(book['description'] ?? 'No Description', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13),),
-                    ],
-                  ) ,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      //Tombol Edit
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
-                        onPressed: (){
-                          Navigator.pop(context);
-                        },
+      body: Container(
+        color: Colors.brown[200], // Warna latar belakang coklat
+        child: books.isEmpty
+            ? Center(
+                child: const Text(
+                  'Tidak ada buku tersedia',
+                  style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ListView.builder(
+                  itemCount: books.length,
+                  itemBuilder: (context, index) {
+                    final book = books[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: ListTile(
+                        leading: Icon(Icons.book, color: Colors.brown), // Ikon buku di sini
+                        title: Text(
+                          book['title'] ?? 'No Title',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
                         ),
-                        IconButton( 
-                          icon: Icon (Icons.delete, color: Colors.red),
-                          onPressed: (){
-                            Navigator.pop(context);
-                          },
-                          )
-                    ],
-                  ),
-                );
-              },
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              book['author'] ?? 'No Author',
+                              style: const TextStyle(
+                                  fontStyle: FontStyle.italic, fontSize: 14),
+                            ),
+                            Text(
+                              book['description'] ?? 'No Description',
+                              style: const TextStyle(
+                                  fontStyle: FontStyle.italic, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddBookPage(),
             ),
+          );
+        },
+        child: const Icon(Icons.add),
+        backgroundColor: Colors.brown,
+      ),
+    );
+  }
+}
+
+class AddBookPage extends StatefulWidget {
+  const AddBookPage({super.key});
+
+  @override
+  _AddBookPageState createState() => _AddBookPageState();
+}
+
+class _AddBookPageState extends State<AddBookPage> {
+  // TextEditingController untuk mengambil input dari TextField
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _authorController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tambah Buku'),
+        backgroundColor: Colors.brown[100],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Form untuk menambah buku
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Judul Buku'),
+            ),
+            TextField(
+              controller: _authorController,
+              decoration: const InputDecoration(labelText: 'Pengarang'),
+            ),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Deskripsi'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final title = _titleController.text;
+                final author = _authorController.text;
+                final description = _descriptionController.text;
+                if (title.isNotEmpty && author.isNotEmpty && description.isNotEmpty) {
+                  // Menambahkan buku ke Supabase
+                  final response = await Supabase.instance.client
+                  .from('books')
+                  .insert([
+                    {
+                      'title': title,
+                      'author': author,
+                      'description': description,
+                    }
+                  ]);
+                  if (response.error == null) {
+                    // Jika berhasil, kembali ke halaman sebelumnya
+                    Navigator.pop(context);
+                  } else {
+                    // Menampilkan pesan error jika gagal menyimpan
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(response.error!.message)));
+                  }
+                } else {
+                  // Menampilkan pesan jika ada field yang kosong
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Semua field harus diisi')));
+                }
+              },
+              child: const Text('Tambah Buku'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
